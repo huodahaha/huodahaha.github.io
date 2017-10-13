@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    
+<meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1">
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="description" content="YCM的代码跳转完善"/>
+
+
+
+
+  <meta name="keywords" content="工具链,vim," />
+
+
+
+
+
+  <link rel="alternate" href="/default" title="傻瓜拾贝">
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.1" />
+
+
+
+<link rel="canonical" href="http://yoursite.com/2017/10/13/vim-1/"/>
+
+
+<meta name="description" content="YCM的配置以前用Source Insight十分顺手，用的最爽的就是代码跳转功能，切换到vim工作后，YCM也很好的完成了这个功能。YCM的安装这里不废话，重点说一说如何能够用起来顺手 使用\键+j，可以立即跳转到光标所在iditenfier的定义12nnoremap &amp;lt;leader&amp;gt;d :YcmCompleter GoToDefinitionElseDeclaration&amp;lt;C">
+<meta name="keywords" content="工具链,vim">
+<meta property="og:type" content="article">
+<meta property="og:title" content="YCM的代码跳转完善">
+<meta property="og:url" content="http://yoursite.com/2017/10/13/vim-1/index.html">
+<meta property="og:site_name" content="傻瓜拾贝">
+<meta property="og:description" content="YCM的配置以前用Source Insight十分顺手，用的最爽的就是代码跳转功能，切换到vim工作后，YCM也很好的完成了这个功能。YCM的安装这里不废话，重点说一说如何能够用起来顺手 使用\键+j，可以立即跳转到光标所在iditenfier的定义12nnoremap &amp;lt;leader&amp;gt;d :YcmCompleter GoToDefinitionElseDeclaration&amp;lt;C">
+<meta property="og:updated_time" content="2017-10-13T23:17:13.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="YCM的代码跳转完善">
+<meta name="twitter:description" content="YCM的配置以前用Source Insight十分顺手，用的最爽的就是代码跳转功能，切换到vim工作后，YCM也很好的完成了这个功能。YCM的安装这里不废话，重点说一说如何能够用起来顺手 使用\键+j，可以立即跳转到光标所在iditenfier的定义12nnoremap &amp;lt;leader&amp;gt;d :YcmCompleter GoToDefinitionElseDeclaration&amp;lt;C">
+
+
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=1.1" />
+<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet'>
+
+
+
+
+
+<script type="text/javascript">
+  var themeConfig = {
+    fancybox: {
+      enable: false
+    },
+  };
+</script>
+
+
+
+
+  
+
+
+
+    <title> YCM的代码跳转完善 - 傻瓜拾贝 </title>
+  </head>
+
+  <body>
+    <div id="page">
+      <header id="masthead"><div class="site-header-inner">
+    <h1 class="site-title">
+        <a href="/." class="logo">傻瓜拾贝</a>
+    </h1>
+
+    <nav id="nav-top">
+        
+            <ul id="menu-top" class="nav-top-items">
+                
+                    <li class="menu-item">
+                        <a href="/archives">
+                            
+                            
+                                Archives
+                            
+                        </a>
+                    </li>
+                
+                    <li class="menu-item">
+                        <a href="/about">
+                            
+                            
+                                About
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        
+  </nav>
+</div>
+
+      </header>
+      <div id="content">
+        
+    <div id="primary">
+        
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">
+        
+          YCM的代码跳转完善
+        
+      </h1>
+
+      <time class="post-time">
+          Oct 13 2017
+      </time>
+    </header>
+
+
+
+    
+            <div class="post-content">
+            <h2 id="YCM的配置"><a href="#YCM的配置" class="headerlink" title="YCM的配置"></a>YCM的配置</h2><p>以前用Source Insight十分顺手，用的最爽的就是代码跳转功能，切换到vim工作后，YCM也很好的完成了这个功能。YCM的安装这里不废话，重点说一说如何能够用起来顺手</p>
+<p>使用\<lead\>键+j，可以立即跳转到光标所在iditenfier的定义<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">nnoremap &lt;leader&gt;d :YcmCompleter GoToDefinitionElseDeclaration&lt;CR&gt;</div><div class="line"><span class="built_in">let</span> g:ycm_goto_buffer_command = <span class="string">'vertical-split'</span></div></pre></td></tr></table></figure></lead\></p>
+<h2 id="YCM-Config文件的生成"><a href="#YCM-Config文件的生成" class="headerlink" title="YCM Config文件的生成"></a>YCM Config文件的生成</h2><p>然而比较麻烦的是，YCM的代码搜索是需要配置的，具体是一个.ycm_extra_conf.py 的文件，如果每个项目都需要自己配置，还是很麻烦的，有一个工具可以很好的帮助我们完成这件事，远离也比较简单，这个工具会fake编译一遍工程，找到所有的依赖路径，再添加到conf.py文件中</p>
+<p><a href="https://github.com/rdnetto/YCM-Generator" target="_blank" rel="external">YCM-Generator</a></p>
+<p>通过bundle安装好之后，在bashi_rc中添加config_gen.py的快捷方式，下次使用也比较方便</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"><span class="built_in">alias</span> config_gen=<span class="string">"/home/&lt;YOUR_NAME&gt;/.vim/bundle/YCM-Generator/config_gen.py"</span></div></pre></td></tr></table></figure>
+<p>使用的时候，在project外层目录(Makefile的上级父目录) 使用<code>config_gen &lt;Proj_PATH&gt;</code> 即可在项目文件夹中生成extra_conf.py文件了，YCM会自动匹配这个配置，做好config之后，我们刚刚配置的跳转定义就能够很好的生效了</p>
+<h2 id="Reference跳转"><a href="#Reference跳转" class="headerlink" title="Reference跳转"></a>Reference跳转</h2><p>很多时候我们不仅需要跳转到一个identifier的定义，还需要跳转到他的所有引用位置，这时YCM就无能为力了，一个很好的搜索工具是<a href="https://github.com/dyng/ctrlsf.vim" target="_blank" rel="external">ctrlsf</a></p>
+<p>通过bundle安装后，我使用的配置如下<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line"><span class="string">" ctrlsf</span></div><div class="line"><span class="string">let g:ctrlsf_position = 'right'</span></div><div class="line"><span class="string">let g:ctrlsf_regex_pattern = 1</span></div><div class="line"><span class="string">let g:ctrlsf_case_sensitive = 'yes'</span></div><div class="line"><span class="string">let g:ctrlsf_default_root = 'project'</span></div><div class="line"><span class="string">let g:ctrlsf_auto_close = 0</span></div><div class="line"><span class="string">let g:ctrlsf_winsize = '30%'</span></div><div class="line"><span class="string">nmap &lt;Leader&gt;f :CtrlSF&lt;CR&gt;</span></div><div class="line"><span class="string">nmap &lt;C-f&gt; &lt;Plug&gt;CtrlSFPrompt</span></div></pre></td></tr></table></figure></p>
+<p>使用\<lead\>键+f，可以立即跳转到光标所在iditenfier的所有引用处<br>使用command+F可以呼出搜索框，使用起来非常方便</lead\></p>
+
+            </div>
+          
+
+    
+      <footer class="post-footer">
+		
+		<div class="post-tags">
+		  
+			<a href="/tags/工具链/">工具链</a>
+		  
+			<a href="/tags/vim/">vim</a>
+		  
+		</div>
+		
+
+        
+        
+  <nav class="post-nav">
+    
+    
+      <a class="next" href="/2017/10/13/kmp/">
+        <span class="next-text nav-default">KMP算法理解</span>
+        <span class="prev-text nav-mobile">Next</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+    
+  </nav>
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </footer>
+    
+  </article>
+
+    </div>
+
+      </div>
+
+      <footer id="colophon"><span class="copyright-year">
+    
+        &copy;
+    
+        2014 -
+    
+    2017
+    <span class="footer-author">Huodahaha.</span>
+    <span class="power-by">
+        Powered by <a class="hexo-link" href="https://hexo.io/">Hexo</a> and <a class="theme-link" href="https://github.com/frostfan/hexo-theme-polarbear">Polar Bear</a>
+    </span>
+</span>
+
+      </footer>
+
+      <div class="back-to-top" id="back-to-top">
+        <i class="iconfont icon-up"></i>
+      </div>
+    </div>
+    
+
+
+    
+
+
+
+
+  
+    <script type="text/javascript" src="/lib/jquery/jquery-3.1.1.min.js"></script>
+  
+
+  
+
+    <script type="text/javascript" src="/js/src/theme.js?v=1.1"></script>
+<script type="text/javascript" src="/js/src/bootstrap.js?v=1.1"></script>
+
+  </body>
+</html>
