@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    
+<meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1">
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="description" content="精读LevelDB(一) 内存池的实现"/>
+
+
+
+
+  <meta name="keywords" content="levelDB,内存池,重学C++," />
+
+
+
+
+
+  <link rel="alternate" href="/default" title="傻瓜拾贝">
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.1" />
+
+
+
+<link rel="canonical" href="http://yoursite.com/2017/10/15/leveldb-arena/"/>
+
+
+<meta name="description" content="LevelDB中内存池的分析LevelDB的内存池比较简单，只allocate，不free，这和Nginx的内存实现原理是很类似，暂时还不太明白为什么这么设计。对于Nginx而言，这样的设计有这充分的理由，那就是一次http连接的时间有限，为每次http连接创建一个新的内存池，结束之后直接销毁。一个内存池的是生命周期和一个http connection相同，将一个基于堆的对象的生命期交由业务的特性">
+<meta name="keywords" content="levelDB,内存池,重学C++">
+<meta property="og:type" content="article">
+<meta property="og:title" content="精读LevelDB(一) 内存池的实现">
+<meta property="og:url" content="http://yoursite.com/2017/10/15/leveldb-arena/index.html">
+<meta property="og:site_name" content="傻瓜拾贝">
+<meta property="og:description" content="LevelDB中内存池的分析LevelDB的内存池比较简单，只allocate，不free，这和Nginx的内存实现原理是很类似，暂时还不太明白为什么这么设计。对于Nginx而言，这样的设计有这充分的理由，那就是一次http连接的时间有限，为每次http连接创建一个新的内存池，结束之后直接销毁。一个内存池的是生命周期和一个http connection相同，将一个基于堆的对象的生命期交由业务的特性">
+<meta property="og:updated_time" content="2017-10-15T21:13:33.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="精读LevelDB(一) 内存池的实现">
+<meta name="twitter:description" content="LevelDB中内存池的分析LevelDB的内存池比较简单，只allocate，不free，这和Nginx的内存实现原理是很类似，暂时还不太明白为什么这么设计。对于Nginx而言，这样的设计有这充分的理由，那就是一次http连接的时间有限，为每次http连接创建一个新的内存池，结束之后直接销毁。一个内存池的是生命周期和一个http connection相同，将一个基于堆的对象的生命期交由业务的特性">
+
+
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=1.1" />
+<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet'>
+
+
+
+
+
+<script type="text/javascript">
+  var themeConfig = {
+    fancybox: {
+      enable: false
+    },
+  };
+</script>
+
+
+
+
+  
+
+
+
+    <title> 精读LevelDB(一) 内存池的实现 - 傻瓜拾贝 </title>
+  </head>
+
+  <body>
+    <div id="page">
+      <header id="masthead"><div class="site-header-inner">
+    <h1 class="site-title">
+        <a href="/." class="logo">傻瓜拾贝</a>
+    </h1>
+
+    <nav id="nav-top">
+        
+            <ul id="menu-top" class="nav-top-items">
+                
+                    <li class="menu-item">
+                        <a href="/archives">
+                            
+                            
+                                Archives
+                            
+                        </a>
+                    </li>
+                
+                    <li class="menu-item">
+                        <a href="/about">
+                            
+                            
+                                About
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        
+  </nav>
+</div>
+
+      </header>
+      <div id="content">
+        
+    <div id="primary">
+        
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">
+        
+          精读LevelDB(一) 内存池的实现
+        
+      </h1>
+
+      <time class="post-time">
+          Oct 15 2017
+      </time>
+    </header>
+
+
+
+    
+            <div class="post-content">
+            <h1 id="LevelDB中内存池的分析"><a href="#LevelDB中内存池的分析" class="headerlink" title="LevelDB中内存池的分析"></a>LevelDB中内存池的分析</h1><p>LevelDB的内存池比较简单，只allocate，不free，这和Nginx的内存实现原理是很类似，暂时还不太明白为什么这么设计。对于Nginx而言，这样的设计有这充分的理由，那就是一次http连接的时间有限，为每次http连接创建一个新的内存池，结束之后直接销毁。一个内存池的是生命周期和一个http connection相同，将一个基于堆的对象的生命期交由业务的特性决定。</p>
+<p>LevelDB的内存池分为一个一个的block，因为不需要进行查找，所以使用链表将这些block串起来就ok(实现其实用了vector，但是这个vector只用到了push_back的操作)。LevelDB对于block的分配和清理使用了new delete语法，而非malloc free。Arena永远只跟踪当前分配的block，如果当前需要分配的字节数大于当前block的剩余大小，则直接新分配一个block，并在新block中进行分配。但是这会出现一个问题，如果每次分配都恰好大于当前block中剩余的部分，那么会造成大量的浪费。为了解决这个问题，LevelDB规定，如果size大于1/4个blocksize，直接分配，并接入链表中。这样,内存池的使用率(不考虑free)至少是75%。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// Array of new[] allocated memory blocks</span></div><div class="line"><span class="built_in">std</span>::<span class="built_in">vector</span>&lt;<span class="keyword">char</span>*&gt; blocks_;</div></pre></td></tr></table></figure>
+<p>LevelDB提供了对于需要对齐的内存块的分配方法。这里使用了一个&amp;取mod的小技巧，不赘言。</p>
+<h1 id="inline-函数的使用"><a href="#inline-函数的使用" class="headerlink" title="inline 函数的使用"></a>inline 函数的使用</h1><p>所谓inline a function就是将一个函数在调用处展开，这可以省略函数调用的开销(参数压栈，出栈，汇编call调用)，对于频繁调用的短函数而言，可以提高代码的运行效率。这和C++的宏定义(define)的原理其实很类似，有两点区别：</p>
+<ul>
+<li>define不能操作类变量，所以如果需要将一个类方法内联化，只能使用inline而非define;</li>
+<li>define函数不方便调试，inline函数方便调试;</li>
+</ul>
+<p>inline函数虽好，但是却要理智使用。这因为，</p>
+<ul>
+<li>很多编译器的优化可以将一些短函数内联化，所以不需要显示的写出inline;</li>
+<li>inline只节省了函数调用的开销，相比较函数的执行而言，增益不大；</li>
+<li>inline函数必须写在头文件，这也一定程度上打破了模块化的设计。</li>
+</ul>
+<p>对于类的成员函数而言，inline函数为什么一定要在头文件中？原理很简单，一方面，因为编译时需要展开inline函数，所以依赖于该模块的部分也都需要知悉inline的具体实现，所以如果需要将一个函数内联化，必须将其放置在头文件中;另一方面，对于在header中定义的函数，如果不标记其为内联函数，在Link期会有命名冲突的问题，导致编译失败，所以如果希望函数在头文件中定义，需将其标记为内联函数。</p>
+<h1 id="禁用copy拷贝构造"><a href="#禁用copy拷贝构造" class="headerlink" title="禁用copy拷贝构造"></a>禁用copy拷贝构造</h1><p>在Effective C++中，作者提到了如何禁用拷贝构造，在LevelDB中也能看到这样的实现细节，而且都注释了出来，代码读起来非常爽。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">private</span>:</div><div class="line"> <span class="comment">// No copying allowed</span></div><div class="line"> Arena(<span class="keyword">const</span> Arena&amp;);</div><div class="line"> <span class="keyword">void</span> <span class="keyword">operator</span>=(<span class="keyword">const</span> Arena&amp;);</div></pre></td></tr></table></figure>
+<h1 id="显示使用interpret-cast进行类型转换"><a href="#显示使用interpret-cast进行类型转换" class="headerlink" title="显示使用interpret_cast进行类型转换"></a>显示使用interpret_cast进行类型转换</h1><p>内存池中多次使用reinterpret_cast进行显示从指针向uintptr_t的转换，是很好的编程习惯。</p>
+<h1 id="线程安全与原子项"><a href="#线程安全与原子项" class="headerlink" title="线程安全与原子项"></a>线程安全与原子项</h1><p>在LevelDB中，存储LevelDB使用了多少空间的变量usage，使用atomic指针+interpret_cast实现。然而在对这个原子项进行操作的时候，arena一直使用了不加内存屏障(memory barrier)的方式，那么这个atomic变量其实失去了原子型，这里可以用一个unsigned int代替，整个LevelDB的内存池没有任何为多线程的特殊设计，所以arena线程不安全。</p>
+
+            </div>
+          
+
+    
+      <footer class="post-footer">
+		
+		<div class="post-tags">
+		  
+			<a href="/tags/levelDB/">levelDB</a>
+		  
+			<a href="/tags/内存池/">内存池</a>
+		  
+			<a href="/tags/重学C/">重学C++</a>
+		  
+		</div>
+		
+
+        
+        
+  <nav class="post-nav">
+    
+    
+      <a class="next" href="/2017/10/13/vim-1/">
+        <span class="next-text nav-default">YCM的代码跳转完善</span>
+        <span class="prev-text nav-mobile">Next</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+    
+  </nav>
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </footer>
+    
+  </article>
+
+    </div>
+
+      </div>
+
+      <footer id="colophon"><span class="copyright-year">
+    
+        &copy;
+    
+        2014 -
+    
+    2017
+    <span class="footer-author">Huodahaha.</span>
+    <span class="power-by">
+        Powered by <a class="hexo-link" href="https://hexo.io/">Hexo</a> and <a class="theme-link" href="https://github.com/frostfan/hexo-theme-polarbear">Polar Bear</a>
+    </span>
+</span>
+
+      </footer>
+
+      <div class="back-to-top" id="back-to-top">
+        <i class="iconfont icon-up"></i>
+      </div>
+    </div>
+    
+
+
+    
+
+
+
+
+  
+    <script type="text/javascript" src="/lib/jquery/jquery-3.1.1.min.js"></script>
+  
+
+  
+
+    <script type="text/javascript" src="/js/src/theme.js?v=1.1"></script>
+<script type="text/javascript" src="/js/src/bootstrap.js?v=1.1"></script>
+
+  </body>
+</html>
