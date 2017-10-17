@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    
+<meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1">
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+  <meta name="description" content="通过static和namespace实现封装"/>
+
+
+
+
+  <meta name="keywords" content="重学C++," />
+
+
+
+
+
+  <link rel="alternate" href="/default" title="傻瓜拾贝">
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.1" />
+
+
+
+<link rel="canonical" href="http://yoursite.com/2017/10/17/namespace/"/>
+
+
+<meta name="description" content="最近读levelDB，发现其中有很多很好的OO实践。我将会一篇篇的整理。 C风格的封装:static之前工作的时候，项目使用static封装一个symbol(variable或function)，编译单元之外，static varible变量不可见。如果编译时遇到了两个不同编译单元中有，1. 具有相同命名的，2. 且均为编译单元外可见的变量，则会有链接错误。 123456// var.cpp//">
+<meta name="keywords" content="重学C++">
+<meta property="og:type" content="article">
+<meta property="og:title" content="通过static和namespace实现封装">
+<meta property="og:url" content="http://yoursite.com/2017/10/17/namespace/index.html">
+<meta property="og:site_name" content="傻瓜拾贝">
+<meta property="og:description" content="最近读levelDB，发现其中有很多很好的OO实践。我将会一篇篇的整理。 C风格的封装:static之前工作的时候，项目使用static封装一个symbol(variable或function)，编译单元之外，static varible变量不可见。如果编译时遇到了两个不同编译单元中有，1. 具有相同命名的，2. 且均为编译单元外可见的变量，则会有链接错误。 123456// var.cpp//">
+<meta property="og:updated_time" content="2017-10-17T19:42:33.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="通过static和namespace实现封装">
+<meta name="twitter:description" content="最近读levelDB，发现其中有很多很好的OO实践。我将会一篇篇的整理。 C风格的封装:static之前工作的时候，项目使用static封装一个symbol(variable或function)，编译单元之外，static varible变量不可见。如果编译时遇到了两个不同编译单元中有，1. 具有相同命名的，2. 且均为编译单元外可见的变量，则会有链接错误。 123456// var.cpp//">
+
+
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=1.1" />
+<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet'>
+
+
+
+
+
+<script type="text/javascript">
+  var themeConfig = {
+    fancybox: {
+      enable: false
+    },
+  };
+</script>
+
+
+
+
+  
+
+
+
+    <title> 通过static和namespace实现封装 - 傻瓜拾贝 </title>
+  </head>
+
+  <body>
+    <div id="page">
+      <header id="masthead"><div class="site-header-inner">
+    <h1 class="site-title">
+        <a href="/." class="logo">傻瓜拾贝</a>
+    </h1>
+
+    <nav id="nav-top">
+        
+            <ul id="menu-top" class="nav-top-items">
+                
+                    <li class="menu-item">
+                        <a href="/archives">
+                            
+                            
+                                Archives
+                            
+                        </a>
+                    </li>
+                
+                    <li class="menu-item">
+                        <a href="/about">
+                            
+                            
+                                About
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        
+  </nav>
+</div>
+
+      </header>
+      <div id="content">
+        
+    <div id="primary">
+        
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">
+        
+          通过static和namespace实现封装
+        
+      </h1>
+
+      <time class="post-time">
+          Oct 17 2017
+      </time>
+    </header>
+
+
+
+    
+            <div class="post-content">
+            <p>最近读levelDB，发现其中有很多很好的OO实践。我将会一篇篇的整理。</p>
+<h1 id="C风格的封装-static"><a href="#C风格的封装-static" class="headerlink" title="C风格的封装:static"></a>C风格的封装:static</h1><p>之前工作的时候，项目使用static封装一个symbol(variable或function)，编译单元之外，static varible变量不可见。如果编译时遇到了两个不同编译单元中有，1. 具有相同命名的，2. 且均为编译单元外可见的变量，则会有链接错误。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// var.cpp</span></div><div class="line"><span class="comment">// 编译 gcc -c var.cpp </span></div><div class="line"><span class="comment">// 查看symbol nm var.o</span></div><div class="line"><span class="comment">// 0000000000000000 d _ZL10var</span></div><div class="line"><span class="comment">// 编译单元之外不可见</span></div><div class="line"><span class="keyword">static</span> <span class="keyword">int</span> var;</div></pre></td></tr></table></figure>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// var.cpp</span></div><div class="line"><span class="comment">// 编译 gcc -c var.cpp </span></div><div class="line"><span class="comment">// 查看symbol nm var.o</span></div><div class="line"><span class="comment">// 0000000000000000 D var</span></div><div class="line"><span class="comment">// 编译单元之外可见</span></div><div class="line"><span class="keyword">int</span> var;</div></pre></td></tr></table></figure>
+<p>如果需要在一个编译单元中使用，另一个编译单元定义的全局可见的变量，则需要使用extern关键字。如果不使用extern关键字，则编译器会告诉你为变量未定义。细想下来，这个extern有些多此一举，因为编译器可以在编译生成.o文件时，<strong>主动</strong>放弃对该变量的解析，等待link阶段时候再在其他的obj文件中寻找是否定义。之所引入了extern关键词，这是为了解决编译阶段的效率，提前预警，要求程序员负责声明一个变量是否为外部，<strong>保证能在compile期间报错，绝不在link阶段报错</strong>。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// main.cpp</span></div><div class="line"><span class="comment">// 编译 gcc -c main.cpp </span></div><div class="line"><span class="comment">// 查看symbol nm main.o</span></div><div class="line"><span class="comment">// 000000000000001d T main</span></div><div class="line"><span class="comment">//                  U printf</span></div><div class="line"><span class="comment">//                  U var</span></div><div class="line"><span class="comment">// 0000000000000000 T _Z3foov</span></div><div class="line"><span class="comment">// </span></div><div class="line"><span class="comment">// U 表示未解决的symbol，编译期间暂不报错，留到link期间解决</span></div><div class="line"></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">"stdio.h"</span></span></div><div class="line"></div><div class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;</div><div class="line">  <span class="built_in">printf</span>(<span class="string">"%d\n"</span>, var);</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</div><div class="line">  foo();</div><div class="line">  <span class="keyword">return</span> <span class="number">0</span>;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>如果不引用static，其实是很危险的，因为任意一个外部的模块，使用static都可以对内部模块的symbol进行调用，给了外部模块一个打破封装的机会。static就好像画地为牢，将修饰的symbol限制在模块以内，有两个好处：</p>
+<ul>
+<li>杜绝了外部模块使用extern调用可能性</li>
+<li>如果各个模块都遵守约定，使用static修饰自己模块内的symbol，则杜绝了命名冲突的可能性</li>
+</ul>
+<h1 id="internal-linkage-amp-external-linkage"><a href="#internal-linkage-amp-external-linkage" class="headerlink" title="internal linkage &amp; external linkage"></a>internal linkage &amp; external linkage</h1><p>什么叫做internal linkage &amp; external linkage？ 这是针对于编译单元(translation unit)的作用域(scope)，如若一个symbol(variable or function)的作用域仅编译单元内可见，则为internal linkage，反之则为external linkage。C++对于各种变量的有缺省的linkage属性的设置，我们也可以通过static/extern改变缺省设置，下面的例子来自于stackoverflow</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line"><span class="comment">// in namespace or global scope</span></div><div class="line"><span class="keyword">int</span> i; <span class="comment">// extern by default</span></div><div class="line"><span class="keyword">const</span> <span class="keyword">int</span> ci; <span class="comment">// static by default</span></div><div class="line"><span class="keyword">extern</span> <span class="keyword">const</span> <span class="keyword">int</span> eci; <span class="comment">// explicitly extern</span></div><div class="line"><span class="keyword">static</span> <span class="keyword">int</span> si; <span class="comment">// explicitly static</span></div><div class="line"></div><div class="line"><span class="comment">// the same goes for functions (but there are no const functions)</span></div><div class="line"><span class="function"><span class="keyword">int</span> <span class="title">foo</span><span class="params">()</span></span>; <span class="comment">// extern by default</span></div><div class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">bar</span><span class="params">()</span></span>; <span class="comment">// explicitly static</span></div></pre></td></tr></table></figure>
+<h1 id="C-风格的封装-namespace"><a href="#C-风格的封装-namespace" class="headerlink" title="C++风格的封装: namespace"></a>C++风格的封装: namespace</h1><p>Google coding style推荐我们使用namespace解决命名空间，这个tip在levelDB中也得到了很好的实践。探究namespace设计的初衷，namespace的诞生本就是为了解决大型工程的命名冲突的，那么namespace比static强在哪里？</p>
+<p>好处在于：</p>
+<ul>
+<li>static没法修饰一个类型，只能修饰一个变量或者是一个函数(Static only applies to names of objects, functions, and anonymous unions, not to type declarations.)</li>
+<li>模版非类型参数(none-type arguments)对一个identifier有external linkage的要求(与C++版本有关)</li>
+<li>还有一点微小的好处，就是原来的static关键词已经被赋予了太多的语义，这里将linkage相关的语义剥离出来，从语义上讲更加清晰</li>
+</ul>
+<p>从实现的结果上来讲上static和匿名namespace造成的结果，都给声明的变量赋予了编译单元外不可见的属性，相对而言，一个具名的namespace是有external linkage属性的。从具体实现来讲，有的blog说匿名的namespace和static都是internal linakge，有的是说匿名的namespace是external linkage，只是用了变名称的方式(这和重载的原理是类似的)，根据我的实验，具体与C++的版本有关。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div></pre></td><td class="code"><pre><div class="line"></div><div class="line"><span class="comment">// generic.cpp</span></div><div class="line"><span class="comment">// gcc -c generic.cpp -std=c++98 编译失败，因为KMaxSize具有internal linkage</span></div><div class="line"><span class="comment">// gcc -c generic.cpp -std=c++11 编译成功</span></div><div class="line"></div><div class="line"><span class="keyword">namespace</span> &#123;</div><div class="line"><span class="keyword">const</span> <span class="keyword">int</span> kMaxSize = <span class="number">10</span>;</div><div class="line">&#125;</div><div class="line"></div><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="keyword">const</span> <span class="keyword">int</span> N&gt;</div><div class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Array</span> &#123;</span></div><div class="line">    T data[N];</div><div class="line">&#125;;</div><div class="line"></div><div class="line">Array&lt;<span class="keyword">int</span>, kMaxSize&gt; data;</div></pre></td></tr></table></figure>
+<p>我的理解是，namespace是一个创建局部有限制的linkage scope的语法糖，匿名namespace是一个绝对封装的包，而具名namespace则可以有限的向外开放，这比单纯的暴露接口，语义上更加明确，且避免了命名空间。</p>
+<h1 id="namespace在LevelDB中的实践使用"><a href="#namespace在LevelDB中的实践使用" class="headerlink" title="namespace在LevelDB中的实践使用"></a>namespace在LevelDB中的实践使用</h1><p>以cache距离，cache是levelDB中线程安全的LRU-Cache的实现，属于公共组件。那么要求就是该模块的接口具有external linkage属性。根据高内聚的原则，头文件中应该尽量少的暴露接口，cache.h的文件结构如下:</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div></pre></td><td class="code"><pre><div class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> STORAGE_LEVELDB_INCLUDE_CACHE_H_</span></div><div class="line"><span class="meta">#<span class="meta-keyword">define</span> STORAGE_LEVELDB_INCLUDE_CACHE_H_</span></div><div class="line"></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdint.h&gt;</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">"leveldb/export.h"</span></span></div><div class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">"leveldb/slice.h"</span></span></div><div class="line"></div><div class="line"><span class="comment">// leveldb的namespace，所以leveldb基本都是在这个namespace下的</span></div><div class="line"><span class="keyword">namespace</span> leveldb &#123;</div><div class="line"></div><div class="line"><span class="comment">// 前置声明</span></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">LEVELDB_EXPORT</span> <span class="title">Cache</span>;</span></div><div class="line"></div><div class="line"><span class="comment">// 工厂方法，鉴于所有symbol默认都是external linkage，所以这是一个对外暴露的接口</span></div><div class="line"><span class="comment">// 该函数是一个自由函数(free function, non-member funtion)，应该尽量少的使用自由函数，因为这直接进入了当前命名空间</span></div><div class="line"><span class="function">LEVELDB_EXPORT Cache* <span class="title">NewLRUCache</span><span class="params">(<span class="keyword">size_t</span> capacity)</span></span>;</div><div class="line"></div><div class="line"><span class="comment">// Cache的接口类</span></div><div class="line"><span class="class"><span class="keyword">class</span> <span class="title">LEVELDB_EXPORT</span> <span class="title">Cache</span> &#123;</span></div><div class="line"> <span class="keyword">public</span>:</div><div class="line">  Cache() &#123; &#125;</div><div class="line">  <span class="keyword">virtual</span> ~Cache();</div><div class="line"></div><div class="line">  <span class="comment">// Cache的使用者不需要直到handle的具体实现，所以再次隐藏了实现</span></div><div class="line">  <span class="comment">// 注意这里并不是前置声明，这里是一个及其别扭，但是细想比较有道理的设计，具体可以阅读我关于levelDB的post</span></div><div class="line">  <span class="comment">// 使用者通过Cache::Handle使用，避免了命名冲突</span></div><div class="line"></div><div class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">Handle</span> &#123;</span> &#125;;</div><div class="line"></div><div class="line">  <span class="function"><span class="keyword">virtual</span> Handle* <span class="title">Insert</span><span class="params">(<span class="keyword">const</span> Slice&amp; key, <span class="keyword">void</span>* value, <span class="keyword">size_t</span> charge,</span></span></div><div class="line">                         void (*deleter)(const Slice&amp; key, void* value)) = 0;</div><div class="line"></div><div class="line">  <span class="comment">// 一些纯虚函数作为接口</span></div><div class="line">  <span class="function"><span class="keyword">virtual</span> Handle* <span class="title">Lookup</span><span class="params">(<span class="keyword">const</span> Slice&amp; key)</span> </span>= <span class="number">0</span>;</div><div class="line">  ...</div><div class="line">  ...</div><div class="line">&#125; <span class="comment">// end of namespace Cache;</span></div><div class="line">&#125; <span class="comment">// end of namespace leveldb</span></div></pre></td></tr></table></figure>
+<p>cache的实现中，把所有实现相关的类都放在了一个匿名空间中，该命名空间与嵌套在leveldb下，与<code>leveldb::Cache</code>平级，互不干扰，在cache的实现中，需要引用Cache的部分都以<code>Cache::Handle</code>这样的形式进行引用，消除了命名冲突的隐患。不得不说一句，同一个模块的头文件和实现文件相互不在相同的命名空间，也是够严格的。</p>
+<p>levelDB还把一些比较常用的组件都放在了leveldb命名以下的一级命名空间里，比如内存池Arena，数据封装Slice,引用他们的时候，在leveldb这个命名空间以内，可以直接使用。简化了一些操作，但是这也是针对于一些高频，不会出歧义的模块而言的。</p>
+
+            </div>
+          
+
+    
+      <footer class="post-footer">
+		
+		<div class="post-tags">
+		  
+			<a href="/tags/重学C/">重学C++</a>
+		  
+		</div>
+		
+
+        
+        
+  <nav class="post-nav">
+    
+    
+      <a class="next" href="/2017/10/15/leveldb-LRU/">
+        <span class="next-text nav-default">精读LevelDB(二) LRU的实现</span>
+        <span class="prev-text nav-mobile">Next</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+    
+  </nav>
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </footer>
+    
+  </article>
+
+    </div>
+
+      </div>
+
+      <footer id="colophon"><span class="copyright-year">
+    
+        &copy;
+    
+        2014 -
+    
+    2017
+    <span class="footer-author">Huodahaha.</span>
+    <span class="power-by">
+        Powered by <a class="hexo-link" href="https://hexo.io/">Hexo</a> and <a class="theme-link" href="https://github.com/frostfan/hexo-theme-polarbear">Polar Bear</a>
+    </span>
+</span>
+
+      </footer>
+
+      <div class="back-to-top" id="back-to-top">
+        <i class="iconfont icon-up"></i>
+      </div>
+    </div>
+    
+
+
+    
+
+
+
+
+  
+    <script type="text/javascript" src="/lib/jquery/jquery-3.1.1.min.js"></script>
+  
+
+  
+
+    <script type="text/javascript" src="/js/src/theme.js?v=1.1"></script>
+<script type="text/javascript" src="/js/src/bootstrap.js?v=1.1"></script>
+
+  </body>
+</html>
